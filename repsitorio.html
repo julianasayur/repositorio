@@ -1,0 +1,73 @@
+CREATE DATABASE BancoDeClientes;
+
+USE BancoDeClientes;
+
+CREATE TABLE Cliente (
+    idcliente INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    limite NUMERIC(15,2) NOT NULL
+);
+
+INSERT INTO Cliente (nome, limite) VALUES 
+('João Lima', 5000.00),
+('Maria Oliver', 3000.00),
+('Carlos Marrone', 1500.00),
+('Alan Costa', 2000.00);
+DELIMITER $$
+
+CREATE PROCEDURE AlterarCliente(
+    IN p_idcliente INT, 
+    IN p_novo_nome VARCHAR(100), 
+    IN p_novo_limite NUMERIC(15,2)
+)
+BEGIN
+    DECLARE v_nome_atual VARCHAR(100);
+    DECLARE v_limite_atual NUMERIC(15,2);
+    DECLARE v_contagem INT;
+
+  
+    START TRANSACTION;
+
+    SELECT nome, limite
+    INTO v_nome_atual, v_limite_atual
+    FROM Cliente
+    WHERE idcliente = p_idcliente;
+
+   
+    IF v_nome_atual IS NULL THEN
+        
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cliente não encontrado.';
+        LEAVE proc_end;
+    END IF;
+
+  
+    SELECT COUNT(*)
+    INTO v_contagem
+    FROM Cliente
+    WHERE idcliente = p_idcliente
+    AND nome = v_nome_atual
+    AND limite = v_limite_atual;
+
+    IF v_contagem = 0 THEN
+       
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dados foram alterados por outro usuário.';
+        LEAVE proc_end;
+    END IF;
+
+   
+    UPDATE Cliente
+    SET nome = p_novo_nome, limite = p_novo_limite
+    WHERE idcliente = p_idcliente;
+
+   
+    COMMIT;
+
+    SELECT 'Alteração realizada com sucesso.' AS resultado;
+
+   
+    proc_end:
+END$$
+
+DELIMITER ;
